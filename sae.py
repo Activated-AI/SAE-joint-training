@@ -19,10 +19,10 @@ class TopKSparseAutoencoder(nn.Module):
         self.n_features = n_features
         self.topk = topk
         
-        # self.encode = nn.Linear(embedding_size, n_features, bias=False)
-        # self.decode = nn.Linear(n_features, embedding_size, bias=False)
-        self.encode = nn.Linear(embedding_size, n_features, bias=True) # BADDDDDD
-        self.decode = nn.Linear(n_features, embedding_size, bias=True)
+        self.encode = nn.Linear(embedding_size, n_features, bias=False)
+        self.decode = nn.Linear(n_features, embedding_size, bias=False)
+        # self.encode = nn.Linear(embedding_size, n_features, bias=True) # BADDDDDD
+        # self.decode = nn.Linear(n_features, embedding_size, bias=True)
         self.bias = nn.Parameter(torch.zeros(embedding_size))
         # set encode to have activations dim to have l2 norm randomly between 0.05 and 0.1
         # set encoder weight to have feature vector length of 1
