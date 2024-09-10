@@ -6,8 +6,7 @@ from torch.nn import functional as F
 def r2_per_channel(predicted, actual):
     inner_dim = actual.shape[-1]
     predicted = predicted.view(-1, inner_dim)
-    original = original.view(-1, inner_dim)
-    assert len(predicted.shape) == 2, "we supposed to be flat now"
+    actual = actual.view(-1, inner_dim)
     channel_means = torch.mean(actual, dim=-2)
     avg_squared_error_per_channel = torch.mean((actual - channel_means)**2, dim=-2)
     avg_squared_error_predicted = torch.mean((predicted - actual)**2, dim=-2)
@@ -20,8 +19,10 @@ class TopKSparseAutoencoder(nn.Module):
         self.n_features = n_features
         self.topk = topk
         
-        self.encode = nn.Linear(embedding_size, n_features, bias=False)
-        self.decode = nn.Linear(n_features, embedding_size, bias=False)
+        # self.encode = nn.Linear(embedding_size, n_features, bias=False)
+        # self.decode = nn.Linear(n_features, embedding_size, bias=False)
+        self.encode = nn.Linear(embedding_size, n_features, bias=True) # BADDDDDD
+        self.decode = nn.Linear(n_features, embedding_size, bias=True)
         self.bias = nn.Parameter(torch.zeros(embedding_size))
         # set encode to have activations dim to have l2 norm randomly between 0.05 and 0.1
         # set encoder weight to have feature vector length of 1

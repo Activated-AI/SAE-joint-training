@@ -188,3 +188,98 @@ class BottleNeckGPT(nn.Module):
         embedding = self.forward(model_input)['logits']
         embedding = embedding.squeeze(0)[sequence_index]
         return embedding
+
+class GPT(nn.Module):
+    def __init__(
+            self,
+            B,
+            T,
+            C,
+            n_heads,
+            H,
+            n_layers,
+            vocab_size,
+        ):
+        super().__init__()
+        self.B = B
+        self.T = T
+        self.C = C
+        self.n_heads = n_heads
+        self.H = H
+        self.n_layers = n_layers
+        self.token_embedding_table = nn.Embedding(vocab_size, C)
+        self.position_embedding_table = nn.Embedding(T, C)
+        self.lm_head = nn.Linear(C, vocab_size)
+        self.layers = nn.ModuleList([Block(H, C, n_heads, T) for _ in range(n_layers)])
+        self.vocab_size = vocab_size
+
+    def forward(self, idx, targets=None, stop_at_layer=None):
+        B, T = idx.shape
+        token_emb = self.token_embedding_table(idx)
+        pos_emb = self.position_embedding_table(torch.arange(T, device=idx.device))
+        x = token_emb + pos_emb
+
+        results = {}
+
+        for i, layer in enumerate(self.layers):
+            x = layer(x)
+            if i == stop_at_layer:
+                results['residuals'] = x
+                return results
+
+        logits = self.lm_head(x)
+        results['logits'] = logits
+
+        if targets is not None:
+            logits_loss_view = logits.view(-1, self.vocab_size)
+            targets_loss_view = targets.view(-1)
+            loss = F.cross_entropy(logits_loss_view, targets_loss_view)
+            results['loss'] = loss
+
+        return results
+
+    def generate(self, idx, max_new_tokens, temperature=0.5):
+        for _ in range(max_new_tokens):
+            logits = self(idx[:, -self.T:])['logits']
+            last_token_logits = logits[:, -1, :]
+            last_token_logits = last_token_logits / temperature
+            probabilities = F.softmax(last_token_logits, dim=-1)
+            next_token = torch.multinomial(probabilities, num_samples=1)
+            idx = torch.cat((idx, next_token), dim=1)
+        return idx
+
+    def prompt_model(self, prompt, max_new_tokens, encode_fn, decode_fn, bottleneck_model=None, temperature=0.5):
+        autoregressive_seq = encode_fn(prompt)
+        for _ in range(max_new_tokens):
+            prediction_index = len(autoregressive_seq) - 1
+
+            model_input = torch.tensor(autoregressive_seq, device=self.token_embedding_table.weight.device)
+
+            while model_input.shape[0] < self.T:
+                pad_token = torch.tensor(encode_fn("\n"), device=self.token_embedding_table.weight.device)
+                model_input = torch.cat((model_input, pad_token), dim=0)
+
+            model_input = model_input.unsqueeze(0)
+
+            model_output = self(model_input, bottleneck_model=bottleneck_model)
+            logits = model_output['logits']
+            prediction_token = logits[:, prediction_index, :] / temperature
+            probabilities = F.softmax(prediction_token, dim=-1)
+            next_token = torch.multinomial(probabilities, num_samples=1)
+            next_token = next_token.item()
+
+            autoregressive_seq.append(next_token)
+
+        return decode_fn(autoregressive_seq)
+
+    def get_embedding(self, prompt, encode_fn, model_embedding_layer):
+        sequence = encode_fn(prompt)
+        model_input = torch.tensor(sequence, device=self.token_embedding_table.weight.device)
+        sequence_index = len(sequence) - 1
+        while model_input.shape[0] < self.T:
+            pad_token = torch.tensor(encode_fn("\n"), device=self.token_embedding_table.weight.device)
+            model_input = torch.cat((model_input, pad_token), dim=0)
+        model_input = model_input.unsqueeze(0)
+        embedding = self.forward(model_input)['logits']
+        embedding = embedding.squeeze(0)[sequence_index]
+        return embedding

@@ -11,7 +11,6 @@ data/*
 *.sae_model_weights.pth
 *.pt
 *.pth
-*.json
 *.tar
 sae_model_weights.pth
 tiny-stories-storymask.ipynb

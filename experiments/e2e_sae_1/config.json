@@ -1,0 +1,20 @@
+{
+    "learning_rate": 0.002,
+    "sae_learning_rate": 5e-05,
+    "model_embedding_layer": 6,
+    "eval_interval": 500,
+    "max_iters": 60000,
+    "H": 32,
+    "B": 128,
+    "T": 256,
+    "C": 256,
+    "feedforward_factor": 3,
+    "n_heads": 8,
+    "n_layers": 12,
+    "sae_size": 16384,
+    "sae_location": 6,
+    "sae_topk": 20,
+    "sae_r2_lambda": 2,
+    "sae_mse_lambda": 0,
+    "vocab_size": 8192
+}
